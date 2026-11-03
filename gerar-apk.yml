@@ -1,0 +1,540 @@
+name: Gerar APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Criar os arquivos do app
+        run: |
+          mkdir -p www android-plugin
+          cat > package.json <<'EOF_0'
+          {
+            "name": "malha-express",
+            "version": "1.0.0",
+            "private": true,
+            "dependencies": {
+              "@capacitor/android": "6.2.0",
+              "@capacitor/cli": "6.2.0",
+              "@capacitor/core": "6.2.0"
+            }
+          }
+          EOF_0
+          cat > capacitor.config.json <<'EOF_1'
+          {
+            "appId": "com.malhaexpress.app",
+            "appName": "Malha Express",
+            "webDir": "www"
+          }
+          EOF_1
+          cat > www/index.html <<'EOF_2'
+          <!doctype html>
+          <html lang="pt-BR"><head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+          <meta name="color-scheme" content="dark light">
+          <title>Malha Express</title>
+          <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+          <style>
+          /* Layout: app de uma coluna, feito para o celular. Cabeçalho, credenciais, arquivos, fila de envio, histórico.
+             Dark-first: oficina escura com um sinal de menta para o que está pronto. */
+          :root{
+            --bg:#0e1115; --surface:#161b21; --surface-2:#1d242c; --line:#28313b;
+            --fg:#eaeef2; --muted:#8e9aa7; --accent:#43e0b4; --accent-ink:#06261d;
+            --warn:#f5b94a; --bad:#ff7b72; --info:#6cb6ff;
+            --display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+            --body:'Instrument Sans','Segoe UI',system-ui,sans-serif;
+            --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+            color-scheme:dark;
+          }
+          @media (prefers-color-scheme: light){
+            :root:not([data-theme="dark"]){
+              --bg:#f3f5f7; --surface:#ffffff; --surface-2:#eaeef2; --line:#d5dce3;
+              --fg:#12181e; --muted:#5d6b78; --accent:#0c8f6c; --accent-ink:#ffffff;
+              --warn:#a76a00; --bad:#c4372e; --info:#1c68b7; color-scheme:light;
+            }
+          }
+          :root[data-theme="light"]{
+            --bg:#f3f5f7; --surface:#ffffff; --surface-2:#eaeef2; --line:#d5dce3;
+            --fg:#12181e; --muted:#5d6b78; --accent:#0c8f6c; --accent-ink:#ffffff;
+            --warn:#a76a00; --bad:#c4372e; --info:#1c68b7; color-scheme:light;
+          }
+          *{box-sizing:border-box}
+          html,body{margin:0}
+          body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--body);
+            padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+            padding-block:20px 120px;-webkit-font-smoothing:antialiased}
+          .wrap{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+          h1,h2{font-family:var(--display);margin:0;text-wrap:balance}
+          header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+          .brand{display:flex;align-items:center;gap:12px;min-width:0}
+          .logo{width:42px;height:42px;border-radius:12px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;flex:none}
+          h1{font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1}
+          .sub{color:var(--muted);font-size:13px;margin-top:3px}
+          .banner{border:1px dashed var(--line);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--muted);display:flex;gap:10px;align-items:flex-start}
+          .banner b{color:var(--fg);font-weight:600}
+          .dot{width:8px;height:8px;border-radius:50%;background:var(--warn);margin-top:6px;flex:none}
+          section{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:14px}
+          h2{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+          label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--muted)}
+          .field{display:flex;gap:8px}
+          input[type=password],input[type=text],input[type=number]{width:100%;min-width:0;background:var(--surface-2);border:1px solid var(--line);color:var(--fg);
+            font:500 15px var(--mono);padding:13px 14px;border-radius:12px;outline:none}
+          input:focus-visible,button:focus-visible,.drop:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+          input::placeholder{color:var(--muted);opacity:.6}
+          .ghost{background:var(--surface-2);border:1px solid var(--line);color:var(--fg);border-radius:12px;padding:0 14px;font:600 13px var(--body);cursor:pointer;flex:none}
+          .hint{font-size:12px;color:var(--muted)}
+          .drop{border:1.5px dashed var(--line);border-radius:14px;padding:22px 16px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:border-color .15s,background .15s}
+          .drop:hover,.drop.over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 7%,transparent)}
+          .drop strong{font-family:var(--display);font-size:17px}
+          .drop span{color:var(--muted);font-size:13px}
+          .files{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+          .file{background:var(--surface-2);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+          .row{display:flex;align-items:center;gap:10px;min-width:0}
+          .ext{font:500 11px var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 6px;color:var(--muted);flex:none}
+          .name{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+          .size{font:400 12px var(--mono);color:var(--muted);flex:none}
+          .x{border:0;background:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:2px 4px;flex:none}
+          .bar{height:6px;border-radius:99px;background:var(--bg);overflow:hidden}
+          .bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:99px;transition:width .25s}
+          .steps{display:flex;justify-content:space-between;gap:4px;font-size:11px;color:var(--muted)}
+          .steps span{display:flex;align-items:center;gap:5px}
+          .steps span::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--line)}
+          .steps .on{color:var(--fg)}.steps .on::before{background:var(--info);box-shadow:0 0 0 3px color-mix(in srgb,var(--info) 25%,transparent)}
+          .steps .done{color:var(--fg)}.steps .done::before{background:var(--accent)}
+          .steps .err{color:var(--bad)}.steps .err::before{background:var(--bad)}
+          .msg{font-size:12.5px;color:var(--muted)}.msg.bad{color:var(--bad)}
+          .result{background:var(--surface-2);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;border-left:3px solid var(--accent)}
+          .result .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+          .pill{font:600 11px var(--body);color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent);padding:4px 9px;border-radius:99px;flex:none}
+          .idline{display:flex;gap:8px;align-items:center}
+          .idline code{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:500 14px var(--mono);background:var(--bg);padding:10px 12px;border-radius:10px;border:1px solid var(--line)}
+          .copy{background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;padding:10px 12px;font:700 12px var(--body);cursor:pointer;flex:none;min-width:64px}
+          .copy.ok{background:var(--info)}
+          .empty{color:var(--muted);font-size:13px;text-align:center;padding:6px 0}
+          .dock{position:fixed;left:0;right:0;bottom:0;padding:14px max(16px,env(safe-area-inset-left,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+            background:linear-gradient(to top,var(--bg) 70%,transparent)}
+          .dock>div{max-width:520px;margin:0 auto}
+          .go{width:100%;border:0;border-radius:14px;background:var(--accent);color:var(--accent-ink);font:800 16px var(--display);padding:16px;cursor:pointer;letter-spacing:.01em}
+          .go:disabled{background:var(--surface-2);color:var(--muted);cursor:not-allowed}
+          .go:not(:disabled):active{transform:scale(.99)}
+          @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+          .check{flex-direction:row;align-items:center;gap:10px;color:var(--fg);font-size:14px}
+          .check input{width:18px;height:18px;accent-color:var(--accent)}
+          body{min-height:100vh}
+          </style>
+          </head><body>
+          <div class="wrap">
+            <header>
+              <div class="brand">
+                <div class="logo" aria-hidden="true">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 2.5 3.5 7.2v9.6L12 21.5l8.5-4.7V7.2L12 2.5Z"/><path d="M3.8 7.4 12 12l8.2-4.6M12 12v9.2"/></svg>
+                </div>
+                <div style="min-width:0">
+                  <h1>Malha Express</h1>
+                  <div class="sub">Do .fbx ao Asset ID</div>
+                </div>
+              </div>
+            </header>
+
+            <div class="banner" id="banner" hidden></div>
+
+            <section>
+              <h2>Credenciais</h2>
+              <label for="key">API Key do Roblox
+                <div class="field">
+                  <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Cole sua chave aqui">
+                  <button class="ghost" id="eye" type="button" aria-label="Mostrar ou ocultar a chave">Ver</button>
+                </div>
+              </label>
+              <label for="uid">ID de usuário
+                <input id="uid" type="text" inputmode="numeric" autocomplete="off" placeholder="ex: 1234567890">
+              </label>
+              <label class="check"><input id="remember" type="checkbox" checked> Lembrar neste aparelho</label>
+              <div class="hint">A chave precisa de <b>asset:read</b> e <b>asset:write</b>. Ela é guardada só dentro do app e vai direto ao Roblox, sem passar por mais ninguém.</div>
+            </section>
+
+            <section>
+              <h2>Arquivos <span id="count"></span></h2>
+              <div class="drop" id="drop" tabindex="0" role="button" aria-label="Escolher arquivos de modelo">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+                <strong>Escolher modelos</strong>
+                <span>.fbx, .gltf ou .glb, vários de uma vez</span>
+              </div>
+              <input id="pick" type="file" multiple hidden>
+              <ul class="files" id="files"></ul>
+            </section>
+
+            <section>
+              <h2>Resultados</h2>
+              <div id="results"><div class="empty">Os Asset IDs aprovados aparecem aqui.</div></div>
+            </section>
+          </div>
+
+          <div class="dock"><div><button class="go" id="go" disabled>Enviar para o Roblox</button></div></div>
+          <script>
+          (function(){
+            var $=function(id){return document.getElementById(id)};
+            var cap=window.Capacitor, P=null;
+            try{ if(cap && cap.registerPlugin) P=cap.registerPlugin('RobloxUploader'); }catch(e){}
+            var queue=[], running=false, nid=0;
+            var TIPOS={fbx:'model/fbx',gltf:'model/gltf+json',glb:'model/gltf-binary'};
+            var STEPS=['Enviando','Processando','Moderação','Pronto'];
+            var MAX=25*1024*1024;
+
+            function store(k,v){try{if(v===undefined)return localStorage.getItem(k);v===null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}return null}
+
+            var b=$('banner');
+            if(!P){
+              b.hidden=false;
+              b.innerHTML='<span class="dot"></span><div><b>Abra pelo app instalado.</b> No navegador o Roblox bloqueia o envio. Dentro do APK funciona.</div>';
+            }
+
+            // credenciais salvas
+            var savedKey=store('mx_key'), savedUid=store('mx_uid');
+            if(savedUid) $('uid').value=savedUid;
+            if(savedKey) $('key').value=savedKey;
+            if(store('mx_rem')==='0') $('remember').checked=false;
+
+            $('eye').onclick=function(){
+              var k=$('key'),h=k.type==='password'; k.type=h?'text':'password'; $('eye').textContent=h?'Ocultar':'Ver';
+            };
+
+            function fmt(n){return n>1e6?(n/1e6).toFixed(2)+' MB':Math.max(1,Math.round(n/1e3))+' KB'}
+            function ext(n){var m=/\.([^.]+)$/.exec(n);return m?m[1].toLowerCase():''}
+            function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+
+            function add(list){
+              var rejected=[];
+              Array.prototype.forEach.call(list,function(f){
+                if(!TIPOS[ext(f.name)]){rejected.push(f.name+' (formato não suportado)');return}
+                if(f.size>MAX){rejected.push(f.name+' (maior que 25 MB)');return}
+                queue.push({id:++nid,file:f,step:-1,pct:0,err:null,done:false});
+              });
+              if(rejected.length){b.hidden=false;b.innerHTML='<span class="dot" style="background:var(--bad)"></span><div><b>Ignorado:</b> '+rejected.map(esc).join(', ')+'</div>'}
+              render(); refresh();
+            }
+            var pick=$('pick'), drop=$('drop');
+            drop.onclick=function(){pick.click()};
+            drop.onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();pick.click()}};
+            pick.onchange=function(){add(pick.files);pick.value=''};
+
+            function render(){
+              var ul=$('files'); ul.innerHTML='';
+              $('count').textContent=queue.length?queue.length+(queue.length>1?' selecionados':' selecionado'):'';
+              queue.forEach(function(q){
+                var li=document.createElement('li'); li.className='file';
+                var st=STEPS.map(function(s,i){
+                  var c=q.err&&i===Math.max(q.step,0)?'err':(q.done||i<q.step?'done':(i===q.step?'on':''));
+                  return '<span class="'+c+'">'+s+'</span>';
+                }).join('');
+                li.innerHTML='<div class="row"><span class="ext">.'+esc(ext(q.file.name))+'</span><span class="name">'+esc(q.file.name)+'</span><span class="size">'+fmt(q.file.size)+'</span>'+
+                  (q.step<0&&!running?'<button class="x" aria-label="Remover" data-id="'+q.id+'">×</button>':'')+'</div>'+
+                  (q.step>=0?'<div class="bar"><i style="width:'+q.pct+'%"></i></div><div class="steps">'+st+'</div>':'')+
+                  (q.err?'<div class="msg bad">'+esc(q.err)+'</div>':'');
+                ul.appendChild(li);
+              });
+              Array.prototype.forEach.call(ul.querySelectorAll('.x'),function(x){
+                x.onclick=function(){queue=queue.filter(function(q){return q.id!=x.dataset.id});render();refresh()};
+              });
+            }
+            function refresh(){
+              var pend=queue.some(function(q){return q.step<0&&!q.err});
+              var ok=!!P&&$('key').value.trim().length>20&&/^\d+$/.test($('uid').value.trim());
+              $('go').disabled=running||!pend||!ok;
+              $('go').textContent=running?'Enviando…':'Enviar para o Roblox';
+            }
+            ['key','uid'].forEach(function(i){$(i).addEventListener('input',refresh)});
+
+            function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
+            function upd(q,step,pct){q.step=step;q.pct=pct;render()}
+            function toB64(file){
+              return new Promise(function(res,rej){
+                var r=new FileReader();
+                r.onload=function(){var s=String(r.result);res(s.slice(s.indexOf(',')+1))};
+                r.onerror=function(){rej(new Error('Não consegui ler o arquivo'))};
+                r.readAsDataURL(file);
+              });
+            }
+            function explain(r){
+              var msg='';
+              try{var j=JSON.parse(r.body);msg=j.message||j.error||''}catch(e){}
+              if(r.code===401) return 'Chave inválida ou expirada. Confira se copiou inteira.';
+              if(r.code===403) return 'A chave não tem permissão. Marque asset:read e asset:write e confira o ID de usuário.';
+              if(r.code===429) return 'Muitos envios seguidos. Espere um minuto e tente de novo.';
+              return 'Roblox respondeu '+r.code+(msg?': '+msg:'');
+            }
+
+            async function sendOne(q){
+              var key=$('key').value.trim(), uid=$('uid').value.trim();
+              upd(q,0,5);
+              var data=await toB64(q.file);
+              q.pct=20;render();
+              var r=await P.upload({apiKey:key,userId:uid,fileName:q.file.name,mime:TIPOS[ext(q.file.name)],data:data});
+              if(r.code<200||r.code>=300) throw new Error(explain(r));
+              var op=JSON.parse(r.body).path;
+              upd(q,1,40);
+              for(var i=0;i<120;i++){
+                await sleep(4000);
+                var s=await P.operation({apiKey:key,path:op});
+                if(s.code<200||s.code>=300) throw new Error(explain(s));
+                var d=JSON.parse(s.body);
+                q.pct=Math.min(92,40+i*4); if(q.step<2&&i>=1)q.step=2; render();
+                if(d.done){
+                  if(d.error) throw new Error('O Roblox recusou: '+(d.error.message||JSON.stringify(d.error)));
+                  var rs=d.response||{};
+                  var mod=rs.moderationResult&&rs.moderationResult.moderationState;
+                  return {nome:rs.displayName||q.file.name,id:String(rs.assetId),mod:mod==='Approved'?'Aprovado':(mod||'Sem moderação')};
+                }
+              }
+              throw new Error('Demorou demais. Veja o resultado no Creator Hub.');
+            }
+
+            $('go').onclick=async function(){
+              if($('remember').checked){store('mx_key',$('key').value.trim());store('mx_uid',$('uid').value.trim());store('mx_rem','1')}
+              else{store('mx_key',null);store('mx_uid',null);store('mx_rem','0')}
+              running=true; refresh(); render();
+              for(var i=0;i<queue.length;i++){
+                var q=queue[i]; if(q.step>=0) continue;
+                try{
+                  var res=await sendOne(q);
+                  q.step=3;q.pct=100;q.done=true;render(); addResult(res);
+                }catch(err){
+                  q.err=(err&&err.message)||'Falha no envio'; render();
+                }
+              }
+              running=false; refresh(); render();
+            };
+
+            function addResult(r){
+              var box=$('results'); if(box.querySelector('.empty')) box.innerHTML='';
+              var d=document.createElement('div'); d.className='result'; d.style.marginBottom='10px';
+              d.innerHTML='<div class="top"><strong>'+esc(r.nome)+'</strong><span class="pill">'+esc(r.mod)+'</span></div>'+
+                '<div class="idline"><code>'+esc(r.id)+'</code><button class="copy" data-v="'+esc(r.id)+'">Copiar ID</button></div>'+
+                '<div class="idline"><code>rbxassetid://'+esc(r.id)+'</code><button class="copy" data-v="rbxassetid://'+esc(r.id)+'">Copiar</button></div>';
+              box.insertBefore(d,box.firstChild);
+              Array.prototype.forEach.call(d.querySelectorAll('.copy'),function(btn){
+                var t=btn.textContent;
+                btn.onclick=function(){
+                  copy(btn.dataset.v); btn.textContent='Copiado'; btn.classList.add('ok');
+                  setTimeout(function(){btn.textContent=t;btn.classList.remove('ok')},1400);
+                };
+              });
+            }
+            function copy(v){
+              function fb(){var t=document.createElement('textarea');t.value=v;document.body.appendChild(t);t.select();try{document.execCommand('copy')}catch(e){}document.body.removeChild(t)}
+              try{navigator.clipboard.writeText(v).catch(fb)}catch(e){fb()}
+            }
+            render(); refresh();
+          })();
+          </script>
+          </body></html>
+          EOF_2
+          cat > android-plugin/RobloxApi.java <<'EOF_3'
+          package com.malhaexpress.app;
+
+          import java.io.ByteArrayOutputStream;
+          import java.io.IOException;
+          import java.io.InputStream;
+          import java.io.OutputStream;
+          import java.net.HttpURLConnection;
+          import java.net.URL;
+          import java.nio.charset.StandardCharsets;
+
+          /** Cliente minimo da Open Cloud Assets API do Roblox. Java puro, sem dependencias do Android. */
+          public class RobloxApi {
+              public static String BASE = "https://apis.roblox.com";
+
+              public static class Result {
+                  public final int code;
+                  public final String body;
+                  public Result(int code, String body) { this.code = code; this.body = body; }
+              }
+
+              static String esc(String s) {
+                  StringBuilder b = new StringBuilder();
+                  for (int i = 0; i < s.length(); i++) {
+                      char c = s.charAt(i);
+                      if (c == '"' || c == '\\') b.append('\\').append(c);
+                      else if (c < 0x20) b.append(String.format("\\u%04x", (int) c));
+                      else b.append(c);
+                  }
+                  return b.toString();
+              }
+
+              /** Envia um modelo (.fbx/.gltf/.glb). Retorna a resposta crua do Roblox (tem "path": "operations/..."). */
+              public static Result upload(String apiKey, String userId, String fileName, String mime, byte[] data) throws IOException {
+                  String display = fileName.replaceAll("\\.[^.]*$", "").trim();
+                  if (display.isEmpty()) display = "Modelo";
+                  if (display.length() > 50) display = display.substring(0, 50);
+                  String safeName = fileName.replaceAll("[\"\\r\\n\\\\]", "_");
+
+                  String json = "{\"assetType\":\"Model\",\"displayName\":\"" + esc(display)
+                          + "\",\"description\":\"Enviado via Malha Express\",\"creationContext\":{\"creator\":{\"userId\":\""
+                          + esc(userId) + "\"}}}";
+
+                  String boundary = "----MalhaExpress" + System.nanoTime();
+                  ByteArrayOutputStream out = new ByteArrayOutputStream(data.length + 1024);
+                  out.write(("--" + boundary + "\r\nContent-Disposition: form-data; name=\"request\"\r\n"
+                          + "Content-Type: application/json\r\n\r\n" + json + "\r\n").getBytes(StandardCharsets.UTF_8));
+                  out.write(("--" + boundary + "\r\nContent-Disposition: form-data; name=\"fileContent\"; filename=\""
+                          + safeName + "\"\r\nContent-Type: " + mime + "\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+                  out.write(data);
+                  out.write(("\r\n--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
+
+                  return send("POST", BASE + "/assets/v1/assets", apiKey,
+                          "multipart/form-data; boundary=" + boundary, out.toByteArray());
+              }
+
+              /** Consulta o andamento. path = "operations/xxxx" (o valor de "path" devolvido pelo upload). */
+              public static Result operation(String apiKey, String path) throws IOException {
+                  if (path == null || !path.matches("operations/[A-Za-z0-9_\\-]+"))
+                      throw new IOException("Caminho de operacao invalido");
+                  return send("GET", BASE + "/assets/v1/" + path, apiKey, null, null);
+              }
+
+              private static Result send(String method, String url, String apiKey, String contentType, byte[] body) throws IOException {
+                  HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+                  c.setRequestMethod(method);
+                  c.setConnectTimeout(30000);
+                  c.setReadTimeout(120000);
+                  c.setRequestProperty("x-api-key", apiKey);
+                  c.setRequestProperty("User-Agent", "MalhaExpress/1.0");
+                  if (body != null) {
+                      c.setDoOutput(true);
+                      c.setRequestProperty("Content-Type", contentType);
+                      c.setFixedLengthStreamingMode(body.length);
+                      OutputStream os = c.getOutputStream();
+                      os.write(body);
+                      os.flush();
+                      os.close();
+                  }
+                  int code = c.getResponseCode();
+                  InputStream is = code >= 400 ? c.getErrorStream() : c.getInputStream();
+                  String text = "";
+                  if (is != null) {
+                      ByteArrayOutputStream bo = new ByteArrayOutputStream();
+                      byte[] buf = new byte[8192];
+                      int n;
+                      while ((n = is.read(buf)) > 0) bo.write(buf, 0, n);
+                      is.close();
+                      text = new String(bo.toByteArray(), StandardCharsets.UTF_8);
+                  }
+                  c.disconnect();
+                  return new Result(code, text);
+              }
+          }
+          EOF_3
+          cat > android-plugin/RobloxUploader.java <<'EOF_4'
+          package com.malhaexpress.app;
+
+          import android.util.Base64;
+
+          import com.getcapacitor.JSObject;
+          import com.getcapacitor.Plugin;
+          import com.getcapacitor.PluginCall;
+          import com.getcapacitor.PluginMethod;
+          import com.getcapacitor.annotation.CapacitorPlugin;
+
+          @CapacitorPlugin(name = "RobloxUploader")
+          public class RobloxUploader extends Plugin {
+
+              @PluginMethod
+              public void upload(final PluginCall call) {
+                  final String apiKey = call.getString("apiKey");
+                  final String userId = call.getString("userId");
+                  final String fileName = call.getString("fileName");
+                  final String mime = call.getString("mime", "application/octet-stream");
+                  final String b64 = call.getString("data");
+                  if (apiKey == null || userId == null || fileName == null || b64 == null) {
+                      call.reject("Faltam dados para o envio");
+                      return;
+                  }
+                  new Thread(new Runnable() {
+                      @Override public void run() {
+                          try {
+                              byte[] data = Base64.decode(b64, Base64.DEFAULT);
+                              RobloxApi.Result r = RobloxApi.upload(apiKey, userId, fileName, mime, data);
+                              JSObject o = new JSObject();
+                              o.put("code", r.code);
+                              o.put("body", r.body);
+                              call.resolve(o);
+                          } catch (Exception e) {
+                              call.reject("Sem conexao com o Roblox: " + e.getMessage());
+                          }
+                      }
+                  }).start();
+              }
+
+              @PluginMethod
+              public void operation(final PluginCall call) {
+                  final String apiKey = call.getString("apiKey");
+                  final String path = call.getString("path");
+                  new Thread(new Runnable() {
+                      @Override public void run() {
+                          try {
+                              RobloxApi.Result r = RobloxApi.operation(apiKey, path);
+                              JSObject o = new JSObject();
+                              o.put("code", r.code);
+                              o.put("body", r.body);
+                              call.resolve(o);
+                          } catch (Exception e) {
+                              call.reject("Sem conexao com o Roblox: " + e.getMessage());
+                          }
+                      }
+                  }).start();
+              }
+          }
+          EOF_4
+          cat > android-plugin/MainActivity.java <<'EOF_5'
+          package com.malhaexpress.app;
+
+          import android.os.Bundle;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  registerPlugin(RobloxUploader.class);
+                  super.onCreate(savedInstanceState);
+              }
+          }
+          EOF_5
+
+
+      - name: Instalar e preparar o Android
+        run: |
+          npm install
+          npx cap add android
+          cp android-plugin/*.java android/app/src/main/java/com/malhaexpress/app/
+          npx cap sync android
+
+      - name: Compilar o APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Publicar o APK para baixar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk MalhaExpress.apk
+          gh release delete apk-atual --yes --cleanup-tag --repo "${{ github.repository }}" || true
+          gh release create apk-atual MalhaExpress.apk --repo "${{ github.repository }}" --title "Malha Express (APK)" --notes "Baixe o MalhaExpress.apk e instale no celular."
